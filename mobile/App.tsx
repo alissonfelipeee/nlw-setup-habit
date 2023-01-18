@@ -1,3 +1,4 @@
+import './src/lib/dayjs.js'
 import { StatusBar } from "react-native";
 import {
   useFonts,
