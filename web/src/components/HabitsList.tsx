@@ -1,10 +1,12 @@
 import * as Checkbox from "@radix-ui/react-checkbox";
+import dayjs from "dayjs";
 import { Check } from "phosphor-react";
 import { useEffect, useState } from "react";
 import { api } from "../lib/axios";
 
 interface HabitsListProps {
   date: Date;
+  onCompletedChange: (completedHabits: number) => void;
 }
 
 interface HabitsInfoProps {
@@ -16,7 +18,7 @@ interface HabitsInfoProps {
   completedHabits: string[];
 }
 
-export function HabitsList({ date }: HabitsListProps) {
+export function HabitsList({ date, onCompletedChange }: HabitsListProps) {
   const [habitsInfo, setHabitsInfo] = useState<HabitsInfoProps>();
 
   useEffect(() => {
@@ -29,17 +31,44 @@ export function HabitsList({ date }: HabitsListProps) {
       .then((response) => {
         setHabitsInfo(response.data);
       });
-      console.log("a");
   }, []);
+
+  async function handleToggleHabit(habitId: string) {
+    await api.patch(`/habits/${habitId}/toggle`);
+
+    const isHabitAlreadyCompleted =
+      habitsInfo!.completedHabits.includes(habitId);
+
+    let completedHabits: string[] = [];
+
+    if (isHabitAlreadyCompleted) {
+      completedHabits = habitsInfo!.completedHabits.filter(
+        (id) => id !== habitId
+      );
+    } else {
+      completedHabits = [...habitsInfo!.completedHabits, habitId];
+    }
+
+    setHabitsInfo({
+      possibleHabits: habitsInfo!.possibleHabits,
+      completedHabits,
+    });
+
+    onCompletedChange(completedHabits.length);
+  }
+
+  const isDateInPast = dayjs(date).isBefore(dayjs(), "day");
 
   return (
     <div className="mt-6 flex flex-col gap-3">
       {habitsInfo?.possibleHabits.map((habit) => {
         return (
           <Checkbox.Root
-          key={habit.id}
-          checked={habitsInfo?.completedHabits.includes(habit.id)}
-          className="flex items-center gap-3 group"
+            key={habit.id}
+            onCheckedChange={() => handleToggleHabit(habit.id)}
+            checked={habitsInfo?.completedHabits.includes(habit.id)}
+            disabled={isDateInPast}
+            className="flex items-center gap-3 group"
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-zinc-900 border-2 border-zinc-800 group-data-[state=checked]:bg-green-500 group-data-[state=checked]:border-green-500">
               <Checkbox.Indicator>
