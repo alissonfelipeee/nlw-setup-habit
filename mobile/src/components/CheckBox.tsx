@@ -17,7 +17,7 @@ export function CheckBox(props: CheckBoxProps) {
     <TouchableOpacity
       activeOpacity={0.7}
       className="flex-row mb-2 items-center"
-      onPress={props.onPress}
+      {...props}
     >
       {props.checked ? (
         <View className="w-8 h-8 bg-green-500 rounded-lg items-center justify-center">

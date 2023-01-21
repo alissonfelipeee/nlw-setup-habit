@@ -1,13 +1,13 @@
-import { generateDatesFromYearBeginning } from "../utils/generate-dates-from-year-beginning";
+import { useCallback, useState } from "react";
 import { View, Text, ScrollView, Alert } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { useEffect, useState } from "react";
-import { api } from "../lib/axios";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import dayjs from "dayjs";
 
 import { HabitDay, DAY_SIZE } from "../components/HabitDay";
 import { Header } from "../components/Header";
 import { Loading } from "../components/Loading";
+import { generateDatesFromYearBeginning } from "../utils/generate-dates-from-year-beginning";
+import { api } from "../lib/axios";
 
 const weekDays = ["D", "S", "T", "Q", "Q", "S", "S"];
 const datesFromYearStart = generateDatesFromYearBeginning();
@@ -40,9 +40,11 @@ export function Home() {
     }
   }
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
   if (loading) {
     return <Loading />;
