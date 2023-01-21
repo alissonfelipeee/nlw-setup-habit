@@ -5,7 +5,9 @@ import {
   TouchableOpacityProps,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import Animated, { FadeIn, FadeOut} from "react-native-reanimated";
 import colors from "tailwindcss/colors";
+import clsx from "clsx";
 
 interface CheckBoxProps extends TouchableOpacityProps {
   title: string;
@@ -20,14 +22,21 @@ export function CheckBox(props: CheckBoxProps) {
       {...props}
     >
       {props.checked ? (
-        <View className="w-8 h-8 bg-green-500 rounded-lg items-center justify-center">
+        <Animated.View
+          className="w-8 h-8 bg-green-500 rounded-lg items-center justify-center"
+          entering={FadeIn}
+          exiting={FadeOut}
+        >
           <Feather name="check" size={20} color={colors.white} />
-        </View>
+        </Animated.View>
       ) : (
         <View className="w-8 h-8 bg-zinc-900 rounded-lg" />
       )}
 
-      <Text className="text-white text-base ml-3 font-semibold">
+      <Text className={clsx(
+        "text-white text-base ml-3 font-semibold",
+        { "line-through text-zinc-400": props.checked}
+      )}>
         {props.title}
       </Text>
     </TouchableOpacity>
