@@ -8,18 +8,44 @@ export async function appRoutes(app: FastifyInstance) {
     const createHabitBody = z.object({
       title: z.string(),
       weekDays: z.array(z.number().int().min(0).max(6)),
+      name: z.string(),
+      email: z.string().email(),
     });
 
-    const { title, weekDays } = createHabitBody.parse(request.body);
+    const { title, weekDays, name, email } = createHabitBody.parse(
+      request.body
+    );
 
     const today = dayjs().startOf("day").toDate();
 
-    await prisma.habit.create({
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      await prisma.user.create({
+        data: {
+          email,
+          name,
+        },
+      });
+    }
+
+    await prisma.user.update({
+      where: {
+        email,
+      },
       data: {
-        title,
-        createdAt: today,
-        weekDays: {
-          create: weekDays.map((weekDay) => ({ weekDay })),
+        habits: {
+          create: {
+            title,
+            createdAt: today,
+            weekDays: {
+              create: weekDays.map((weekDay) => ({ weekDay })),
+            },
+          },
         },
       },
     });
@@ -28,15 +54,27 @@ export async function appRoutes(app: FastifyInstance) {
   app.get("/day", async (request) => {
     const getDayParams = z.object({
       date: z.coerce.date(),
+      email: z.string().email(),
     });
 
-    const { date } = getDayParams.parse(request.query);
+    const { date, email } = getDayParams.parse(request.query);
 
     const parsedDate = dayjs(date).startOf("day");
     const weekDay = parsedDate.get("day");
 
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return;
+    }
+
     const possibleHabits = await prisma.habit.findMany({
       where: {
+        userId: user.id,
         createdAt: {
           lte: date,
         },
@@ -50,16 +88,18 @@ export async function appRoutes(app: FastifyInstance) {
 
     const day = await prisma.day.findUnique({
       where: {
-        date: parsedDate.toDate(),
+        date_userId: {
+          date: parsedDate.toDate(),
+          userId: user.id,
+        },
       },
       include: {
         dayHabits: true,
       },
     });
 
-    const completedHabits = day?.dayHabits.map(
-      (dayHabit) => dayHabit.habitId
-    ) ?? [];
+    const completedHabits =
+      day?.dayHabits.map((dayHabit) => dayHabit.habitId) ?? [];
 
     return {
       possibleHabits,
@@ -67,18 +107,34 @@ export async function appRoutes(app: FastifyInstance) {
     };
   });
 
-  app.patch("/habits/:id/toggle", async (request) => {
+  app.patch("/habits/toggle", async (request, reply) => {
     const toggleHabitParams = z.object({
       id: z.string().uuid(),
+      email: z.string().email(),
     });
 
-    const { id } = toggleHabitParams.parse(request.params);
+    const { id, email } = toggleHabitParams.parse(request.body);
 
     const today = dayjs().startOf("day").toDate();
 
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return reply.status(404).send({
+        message: "User not found",
+      });
+    }
+
     let day = await prisma.day.findUnique({
       where: {
-        date: today,
+        date_userId: {
+          date: today,
+          userId: user.id,
+        },
       },
     });
 
@@ -86,18 +142,38 @@ export async function appRoutes(app: FastifyInstance) {
       day = await prisma.day.create({
         data: {
           date: today,
+          userId: user.id,
         },
       });
     }
 
     const dayHabit = await prisma.dayHabit.findUnique({
       where: {
-        dayId_habitId: {
+        dayId_habitId_userId: {
           dayId: day.id,
           habitId: id,
+          userId: user.id,
         },
       },
     });
+
+    const habit = await prisma.habit.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!habit) {
+      return reply.status(404).send({
+        message: "Habit not found",
+      });
+    }
+
+    if (habit.userId !== user.id) {
+      return reply.status(401).send({
+        message: "You are not allowed to toggle this habit",
+      });
+    }
 
     if (dayHabit) {
       await prisma.dayHabit.delete({
@@ -111,12 +187,13 @@ export async function appRoutes(app: FastifyInstance) {
         data: {
           dayId: day.id,
           habitId: id,
+          userId: user.id,
         },
       });
     }
   });
 
-  app.get("/summary", async () => {
+  app.get("/summary/global", async () => {
     const summary = await prisma.$queryRaw`
       SELECT 
         D.id, 
@@ -138,6 +215,50 @@ export async function appRoutes(app: FastifyInstance) {
               AND H.createdAt <= D.date
           ) as amountOfHabits
       FROM days D
+    `;
+
+    return summary;
+  });
+
+  app.get("/summary", async (request) => {
+    const getSummaryQuery = z.object({
+      email: z.string().email(),
+    });
+
+    const { email } = getSummaryQuery.parse(request.query);
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (!user) {
+      return;
+    }
+
+    const summary = await prisma.$queryRaw`
+      SELECT 
+        D.id, 
+        D.date,
+        D.userId,
+        (
+          SELECT 
+            cast(count(*) as float)
+          FROM day_habits DH
+          WHERE DH.dayId = D.id
+          ) as completedHabits,
+          (
+            SELECT
+              cast(count(*) as float)
+            FROM habit_week_days HWD
+            JOIN habits H
+              ON H.id = HWD.habitId AND H.userId = ${user.id}
+            WHERE 
+              HWD.weekDay = cast(strftime('%w', D.date/1000.0, 'unixepoch') as int)
+              AND H.createdAt <= D.date
+          ) as amountOfHabits
+      FROM days D WHERE D.userId = ${user.id}
     `;
 
     return summary;
