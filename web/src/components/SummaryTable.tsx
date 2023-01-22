@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { Context } from "../context/UserContext";
 import { api } from "../lib/axios";
 import { generateDatesFromYearBeginning } from "../utils/generate-dates-from-year-beginning";
 import { HabitDay } from "./HabitDay";
@@ -21,10 +22,18 @@ type Summary = {
 export function SummaryTable() {
   const [summary, setSummary] = useState<Summary>([]);
 
+  const { user } = useContext(Context);
+
   useEffect(() => {
-    api.get("/summary").then((response) => {
-      setSummary(response.data);
-    });
+    api
+      .get("/summary", {
+        params: {
+          email: user!.email,
+        },
+      })
+      .then((response) => {
+        setSummary(response.data);
+      });
   }, []);
 
   return (
@@ -39,7 +48,6 @@ export function SummaryTable() {
           </div>
         ))}
       </div>
-
       <div className="grid grid-rows-7 grid-flow-col gap-3">
         {summary.length > 0 &&
           summaryDates.map((date) => {

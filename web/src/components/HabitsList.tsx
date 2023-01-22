@@ -1,7 +1,8 @@
 import * as Checkbox from "@radix-ui/react-checkbox";
 import dayjs from "dayjs";
-import { Check } from "phosphor-react";
-import { useEffect, useState } from "react";
+import { Check, X } from "phosphor-react";
+import { useContext, useEffect, useState } from "react";
+import { Context } from "../context/UserContext";
 import { api } from "../lib/axios";
 
 interface HabitsListProps {
@@ -21,11 +22,14 @@ interface HabitsInfoProps {
 export function HabitsList({ date, onCompletedChange }: HabitsListProps) {
   const [habitsInfo, setHabitsInfo] = useState<HabitsInfoProps>();
 
+  const { user } = useContext(Context);
+
   useEffect(() => {
     api
       .get("/day", {
         params: {
           date: date.toISOString(),
+          email: user!.email,
         },
       })
       .then((response) => {
@@ -34,7 +38,10 @@ export function HabitsList({ date, onCompletedChange }: HabitsListProps) {
   }, []);
 
   async function handleToggleHabit(habitId: string) {
-    await api.patch(`/habits/${habitId}/toggle`);
+    await api.patch("/habits/toggle", {
+      id: habitId,
+      email: user!.email,
+    });
 
     const isHabitAlreadyCompleted =
       habitsInfo!.completedHabits.includes(habitId);

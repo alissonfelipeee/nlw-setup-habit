@@ -1,15 +1,14 @@
-import "./global.css";
-import "./lib/dayjs";
 import { Header } from "./components/Header";
-import { SummaryTable } from "./components/SummaryTable";
+import { UserProvider } from "./context/UserContext";
+import { Home } from "./pages/Home";
 
 export function App() {
   return (
-    <div className="w-screen h-screen flex justify-center items-center">
-      <div className="w-full max-w-5xl px-6 flex flex-col gap-16">
+    <UserProvider>
+      <div className="w-screen h-screen flex flex-col gap-8">
         <Header />
-        <SummaryTable />
+        <Home />
       </div>
-    </div>
+    </UserProvider>
   );
 }

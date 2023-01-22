@@ -1,6 +1,7 @@
 import * as Checkbox from "@radix-ui/react-checkbox";
 import { Check } from "phosphor-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useContext, useState } from "react";
+import { Context } from "../context/UserContext";
 import { api } from "../lib/axios";
 
 const availableWeekDays = [
@@ -17,6 +18,8 @@ export function NewHabitForm() {
   const [title, setTitle] = useState("");
   const [weekDays, setWeekDays] = useState<number[]>([]);
 
+  const { user } = useContext(Context);
+
   async function createNewHabit(event: FormEvent) {
     event.preventDefault();
 
@@ -25,6 +28,8 @@ export function NewHabitForm() {
     await api.post("/habits", {
       title,
       weekDays,
+      name: user!.displayName,
+      email: user!.email,
     });
 
     setTitle("");
