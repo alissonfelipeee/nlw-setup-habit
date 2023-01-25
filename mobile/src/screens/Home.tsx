@@ -1,6 +1,8 @@
-import { useCallback, useState } from "react";
-import { View, Text, ScrollView, Alert } from "react-native";
+import { useCallback, useContext, useState } from "react";
+import { View, Text, ScrollView, Alert, TouchableOpacity } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import colors from "tailwindcss/colors";
+import { Feather } from "@expo/vector-icons";
 import dayjs from "dayjs";
 
 import { HabitDay, DAY_SIZE } from "../components/HabitDay";
@@ -8,6 +10,7 @@ import { Header } from "../components/Header";
 import { Loading } from "../components/Loading";
 import { generateDatesFromYearBeginning } from "../utils/generate-dates-from-year-beginning";
 import { api } from "../lib/axios";
+import { Context } from "../context/UserContext";
 
 const weekDays = ["D", "S", "T", "Q", "Q", "S", "S"];
 const datesFromYearStart = generateDatesFromYearBeginning();
@@ -26,11 +29,16 @@ export function Home() {
   const [summary, setSummary] = useState<Summary | null>(null);
 
   const { navigate } = useNavigation();
+  const { user } = useContext(Context);
 
   async function fetchData() {
     try {
       setLoading(true);
-      const response = await api.get("/summary");
+      const response = await api.get("/summary", {
+        params: {
+          email: user!.email,
+        },
+      });
       setSummary(response.data);
     } catch (error) {
       Alert.alert("Ops", "Não foi possível carregar o sumário de hábitos.");
@@ -53,6 +61,17 @@ export function Home() {
   return (
     <View className="flex-1 bg-background px-8 py-16">
       <Header />
+      <View className="flex items-start mt-2">
+        <TouchableOpacity
+          activeOpacity={0.7}
+          className="flex-row h-11 px-4 border-2 border-violet-500 rounded-lg items-center"
+          onPress={() => navigate("newHabit")}
+        >
+          <Feather name="plus" size={20} color={colors.violet[500]} />
+
+          <Text className="text-white ml-3 font-semibold text-base">Novo</Text>
+        </TouchableOpacity>
+      </View>
 
       <View className="flex-row mt-6 mb-2">
         {weekDays.map((day, index) => (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { View, Text, ScrollView, Alert } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import dayjs from "dayjs";
@@ -11,6 +11,7 @@ import { api } from "../lib/axios";
 import { generateProgressPercentage } from "../utils/generate-progress-percentage";
 import { HabitsEmpty } from "../components/HabitsEmpty";
 import clsx from "clsx";
+import { Context } from "../context/UserContext";
 
 interface HabitParams {
   date: string;
@@ -31,6 +32,7 @@ export function Habit() {
 
   const route = useRoute();
   const { date } = route.params as HabitParams;
+  const { user } = useContext(Context);
 
   const parsedDate = dayjs(date);
   const isDateInPast = parsedDate.isBefore(dayjs(), "day");
@@ -51,6 +53,7 @@ export function Habit() {
       const response = await api.get("/day", {
         params: {
           date,
+          email: user!.email,
         },
       });
 
@@ -69,7 +72,10 @@ export function Habit() {
 
   async function handleToggleHabit(habitId: string) {
     try {
-      await api.patch(`/habits/${habitId}/toggle`);
+      await api.patch("/habits/toggle", {
+        id: habitId,
+        email: user!.email,
+      });
 
       if (completedHabits.includes(habitId)) {
         setCompletedHabits(completedHabits.filter((id) => id !== habitId));

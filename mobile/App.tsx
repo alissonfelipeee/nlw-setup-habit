@@ -1,4 +1,4 @@
-import './src/lib/dayjs';
+import "./src/lib/dayjs";
 import { StatusBar } from "react-native";
 import {
   useFonts,
@@ -9,7 +9,8 @@ import {
 } from "@expo-google-fonts/inter";
 
 import { Loading } from "./src/components/Loading";
-import { Routes } from './src/routes';
+import { Routes } from "./src/routes";
+import { UserProvider } from "./src/context/UserContext";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -25,12 +26,12 @@ export default function App() {
 
   return (
     <>
-      <Routes />
       <StatusBar
         barStyle="light-content"
         backgroundColor="transparent"
         translucent
       />
+      <Routes />
     </>
   );
 }
